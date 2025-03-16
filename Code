@@ -1,0 +1,115 @@
+import cv2
+import numpy as np
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from PIL import Image, ImageTk
+
+# Load YOLO model
+net = cv2.dnn.readNet("yolov4.weights", "yolov4.cfg")
+layer_names = net.getLayerNames()
+output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers().flatten()]
+
+# Load class labels
+with open("coco.names", "r") as f:
+    classes = [line.strip() for line in f.readlines()]
+
+# Function to process the image and count humans
+def count_humans(image_path):
+    # Load the image
+    image = cv2.imread(image_path)
+    if image is None:
+        messagebox.showerror("Error", "Failed to load image")
+        return
+
+    height, width, channels = image.shape
+
+    # Pre-process the image for YOLO
+    blob = cv2.dnn.blobFromImage(image, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+    net.setInput(blob)
+    outs = net.forward(output_layers)
+
+    # Lists to hold detection results
+    class_ids = []
+    confidences = []
+    boxes = []
+
+    # Process each of the network outputs
+    for out in outs:
+        for detection in out:
+            scores = detection[5:]  # Get confidence scores for each class
+            class_id = np.argmax(scores)  # Get the class with the highest score
+            confidence = scores[class_id]  # Get the highest score (confidence)
+
+            # Filter weak predictions by confidence threshold and check for humans
+            if confidence > 0.5 and class_id == 0:  # 0 is the ID for 'person'
+                # Scale detection coordinates back to the original frame size
+                center_x = int(detection[0] * width)
+                center_y = int(detection[1] * height)
+                w = int(detection[2] * width)
+                h = int(detection[3] * height)
+
+                # Get the top-left corner of the bounding box
+                x = int(center_x - w / 2)
+                y = int(center_y - h / 2)
+
+                boxes.append([x, y, w, h])
+                confidences.append(float(confidence))
+                class_ids.append(class_id)
+
+    # Non-max suppression to remove overlapping boxes
+    indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+
+    # Count humans
+    human_count = 0
+    for i in range(len(boxes)):
+        if i in indexes:
+            human_count += 1
+
+    # Display result in the UI
+    result_label.config(text=f"Number of humans detected: {human_count}")
+
+    # Display the image in the Tkinter window
+    display_image(image)
+
+# Function to display the image in the Tkinter window
+def display_image(image):
+    # Convert the image to RGB (Tkinter needs RGB format)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    # Convert image to ImageTk format for displaying in Tkinter
+    image_pil = Image.fromarray(image_rgb)
+    image_tk = ImageTk.PhotoImage(image_pil)
+
+    # Update the label with the image
+    image_label.config(image=image_tk)
+    image_label.image = image_tk  # Keep reference to avoid garbage collection
+
+# Function to open file dialog and get image path
+def open_file():
+    file_path = filedialog.askopenfilename(
+        title="Select an Image",
+        filetypes=[("Image Files", "*.jpg;*.jpeg;*.png;*.bmp;*.tiff")]
+    )
+    if file_path:
+        count_humans(file_path)
+
+# Create the main window
+window = tk.Tk()
+window.title("Human Detection App")
+
+# Set window size
+window.geometry("800x600")
+
+# Create a button to open the file dialog and process the image
+open_button = tk.Button(window, text="Select Image", font=("Helvetica", 14), command=open_file)
+open_button.pack(pady=20)
+
+# Add label to display result
+result_label = tk.Label(window, text="Number of humans detected: 0", font=("Helvetica", 14))
+result_label.pack(pady=10)
+
+# Add label to display the image
+image_label = tk.Label(window)
+image_label.pack(pady=20)
+
+# Run the Tkinter event loop
+window.mainloop()
