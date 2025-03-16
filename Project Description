@@ -1,0 +1,24 @@
+Human Detection App Using YOLOv4 and Tkinter
+Overview
+This project is a Python-based human detection application that uses the YOLOv4 object detection model to count the number of people in an image. The application provides a simple GUI (Graphical User Interface) using Tkinter, where users can upload an image, and the app will detect and count the number of humans present.
+
+Key Features
+✅ Uses YOLOv4, a state-of-the-art object detection model.
+✅ Loads images through a user-friendly Tkinter GUI.
+✅ Detects humans in images and counts them.
+✅ Displays the image with detections in the GUI.
+✅ Implements Non-Maximum Suppression (NMS) to eliminate redundant detections.
+
+How It Works
+User Uploads an Image – The Tkinter GUI allows users to select an image file.
+Image Preprocessing – The image is resized and converted into a blob for YOLO processing.
+YOLOv4 Detection
+The model loads pre-trained weights (yolov4.weights) and config (yolov4.cfg).
+It uses the COCO dataset, which includes humans as a category.
+The image is analyzed, and bounding boxes are generated around detected objects.
+Filtering for Humans
+The detections are filtered to include only "person" (Class ID 0 in COCO).
+Non-Maximum Suppression (NMS) removes overlapping bounding boxes.
+Displaying Results
+The detected count is shown in the GUI.
+The processed image is displayed in the Tkinter window.
